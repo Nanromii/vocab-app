@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import type { VocabSet } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 type QuizQuestion = {
   id: string
@@ -196,9 +197,33 @@ export default function QuizPage() {
   const currentQuestion = questions[currentQuestionIndex]
   const maxQuestionCount = selectedSet?.words.length || 10
 
+  const languages = [
+    { value: "english", label: "English" },
+    { value: "vietnamese", label: "Vietnamese" },
+    { value: "japanese", label: "Japanese" },
+  ]
+
   return (
     <div className="container mx-auto py-6 px-4">
       <h1 className="text-3xl font-bold mb-6">Quiz</h1>
+
+      <div className="flex items-center gap-4 mb-6">
+        <Link href="/">
+          <Button variant="outline" size="sm">
+            Home
+          </Button>
+        </Link>
+        <Link href="/vocabulary">
+          <Button variant="outline" size="sm">
+            Vocabulary
+          </Button>
+        </Link>
+        <Link href="/flashcards">
+          <Button variant="outline" size="sm">
+            Flashcards
+          </Button>
+        </Link>
+      </div>
 
       {!quizStarted ? (
         <Card>
@@ -325,7 +350,10 @@ export default function QuizPage() {
             <CardDescription>
               {selectedSet && (
                 <span>
-                  Translate from {selectedSet.sourceLanguage} to {selectedSet.targetLanguage}
+                  Translate from{" "}
+                  {languages.find((l) => l.value === selectedSet.sourceLanguage)?.label || selectedSet.sourceLanguage}{" "}
+                  to{" "}
+                  {languages.find((l) => l.value === selectedSet.targetLanguage)?.label || selectedSet.targetLanguage}
                 </span>
               )}
             </CardDescription>

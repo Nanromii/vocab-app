@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, X, Languages } from "lucide-react"
+import { Plus, Trash2, X, Languages, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import type { VocabSet, VocabWord } from "@/lib/types"
+import Link from "next/link"
+import { Textarea } from "@/components/ui/textarea"
+import { VirtualKeyboard } from "@/components/virtual-keyboard"
 
 export default function VocabularyPage() {
   const { toast } = useToast()
@@ -21,6 +24,9 @@ export default function VocabularyPage() {
   const [newWord, setNewWord] = useState("")
   const [newMeaning, setNewMeaning] = useState("")
   const [editMode, setEditMode] = useState(false)
+  const [activeTab, setActiveTab] = useState("sets")
+  const [showSourceKeyboard, setShowSourceKeyboard] = useState(false)
+  const [showTargetKeyboard, setShowTargetKeyboard] = useState(false)
 
   // Load vocabulary sets from localStorage on component mount
   useEffect(() => {
@@ -34,6 +40,15 @@ export default function VocabularyPage() {
   useEffect(() => {
     localStorage.setItem("vocabSets", JSON.stringify(vocabSets))
   }, [vocabSets])
+
+  // Add this useEffect to handle URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get("tab")
+    if (tabParam === "create") {
+      setActiveTab("create")
+    }
+  }, [])
 
   const createNewSet = () => {
     if (!newSetName.trim()) {
@@ -121,23 +136,59 @@ export default function VocabularyPage() {
     })
   }
 
+  // Simplified language list focusing on Japanese, English, and Vietnamese
   const languages = [
-    { value: "english", label: "English" },
-    { value: "vietnamese", label: "Vietnamese" },
-    { value: "french", label: "French" },
-    { value: "spanish", label: "Spanish" },
-    { value: "german", label: "German" },
-    { value: "japanese", label: "Japanese" },
-    { value: "korean", label: "Korean" },
-    { value: "chinese", label: "Chinese" },
-    { value: "russian", label: "Russian" },
+    { value: "english", label: "English", keyboard: "en" },
+    { value: "vietnamese", label: "Vietnamese", keyboard: "vi" },
+    { value: "japanese", label: "Japanese", keyboard: "ja" },
   ]
+
+  const getKeyboardLayout = (languageCode: string) => {
+    const language = languages.find((lang) => lang.value === languageCode)
+    return language?.keyboard || "en"
+  }
+
+  const handleSourceKeyboardInput = (char: string) => {
+    if (char === "\b") {
+      // Handle backspace
+      setNewWord(newWord.slice(0, -1))
+    } else {
+      setNewWord(newWord + char)
+    }
+  }
+
+  const handleTargetKeyboardInput = (char: string) => {
+    if (char === "\b") {
+      // Handle backspace
+      setNewMeaning(newMeaning.slice(0, -1))
+    } else {
+      setNewMeaning(newMeaning + char)
+    }
+  }
 
   return (
     <div className="container mx-auto py-6 px-4">
       <h1 className="text-3xl font-bold mb-6">Vocabulary Manager</h1>
 
-      <Tabs defaultValue="sets" className="w-full">
+      <div className="flex items-center gap-4 mb-6">
+        <Link href="/">
+          <Button variant="outline" size="sm">
+            Home
+          </Button>
+        </Link>
+        <Link href="/flashcards">
+          <Button variant="outline" size="sm">
+            Flashcards
+          </Button>
+        </Link>
+        <Link href="/quiz">
+          <Button variant="outline" size="sm">
+            Quiz
+          </Button>
+        </Link>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="sets">My Sets</TabsTrigger>
           <TabsTrigger value="create">Create New Set</TabsTrigger>
@@ -149,7 +200,7 @@ export default function VocabularyPage() {
               <Languages className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium">No vocabulary sets yet</h3>
               <p className="text-gray-500 mt-2 mb-4">Create your first vocabulary set to get started</p>
-              <Button onClick={() => document.querySelector('[value="create"]')?.click()}>Create New Set</Button>
+              <Button onClick={() => setActiveTab("create")}>Create New Set</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -158,8 +209,9 @@ export default function VocabularyPage() {
                   <CardHeader>
                     <CardTitle>{set.name}</CardTitle>
                     <CardDescription>
-                      {languages.find((l) => l.value === set.sourceLanguage)?.label} to{" "}
-                      {languages.find((l) => l.value === set.targetLanguage)?.label} • {set.words.length} words
+                      {languages.find((l) => l.value === set.sourceLanguage)?.label || set.sourceLanguage} to{" "}
+                      {languages.find((l) => l.value === set.targetLanguage)?.label || set.targetLanguage} •{" "}
+                      {set.words.length} words
                     </CardDescription>
                   </CardHeader>
                   <CardFooter className="flex justify-between">
@@ -181,13 +233,25 @@ export default function VocabularyPage() {
                 <h2 className="text-2xl font-bold">
                   {activeSet.name}{" "}
                   <span className="text-sm font-normal text-gray-500">
-                    ({languages.find((l) => l.value === activeSet.sourceLanguage)?.label} to{" "}
-                    {languages.find((l) => l.value === activeSet.targetLanguage)?.label})
+                    ({languages.find((l) => l.value === activeSet.sourceLanguage)?.label || activeSet.sourceLanguage} to{" "}
+                    {languages.find((l) => l.value === activeSet.targetLanguage)?.label || activeSet.targetLanguage})
                   </span>
                 </h2>
-                <Button variant="ghost" size="icon" onClick={() => setActiveSet(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Link href="/quiz">
+                    <Button variant="outline" size="sm">
+                      Create Quiz
+                    </Button>
+                  </Link>
+                  <Link href="/flashcards">
+                    <Button variant="outline" size="sm">
+                      Practice Flashcards
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="icon" onClick={() => setActiveSet(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <Card className="mb-6">
@@ -197,26 +261,72 @@ export default function VocabularyPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="new-word">
-                        {languages.find((l) => l.value === activeSet.sourceLanguage)?.label} Word
-                      </Label>
-                      <Input
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="new-word">
+                          {languages.find((l) => l.value === activeSet.sourceLanguage)?.label ||
+                            activeSet.sourceLanguage}{" "}
+                          Word
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowSourceKeyboard(!showSourceKeyboard)}
+                          className="h-8 px-2"
+                        >
+                          <Globe className="h-4 w-4 mr-1" />
+                          {showSourceKeyboard ? "Hide Keyboard" : "Show Keyboard"}
+                        </Button>
+                      </div>
+                      <Textarea
                         id="new-word"
                         value={newWord}
                         onChange={(e) => setNewWord(e.target.value)}
                         placeholder="Enter word"
+                        className="min-h-[80px]"
+                        lang={getKeyboardLayout(activeSet.sourceLanguage)}
                       />
+                      {showSourceKeyboard && (
+                        <div className="mt-2 border rounded-md p-2">
+                          <VirtualKeyboard
+                            layout={getKeyboardLayout(activeSet.sourceLanguage)}
+                            onKeyPress={handleSourceKeyboardInput}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="new-meaning">
-                        {languages.find((l) => l.value === activeSet.targetLanguage)?.label} Meaning
-                      </Label>
-                      <Input
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="new-meaning">
+                          {languages.find((l) => l.value === activeSet.targetLanguage)?.label ||
+                            activeSet.targetLanguage}{" "}
+                          Meaning
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowTargetKeyboard(!showTargetKeyboard)}
+                          className="h-8 px-2"
+                        >
+                          <Globe className="h-4 w-4 mr-1" />
+                          {showTargetKeyboard ? "Hide Keyboard" : "Show Keyboard"}
+                        </Button>
+                      </div>
+                      <Textarea
                         id="new-meaning"
                         value={newMeaning}
                         onChange={(e) => setNewMeaning(e.target.value)}
                         placeholder="Enter meaning"
+                        className="min-h-[80px]"
+                        lang={getKeyboardLayout(activeSet.targetLanguage)}
                       />
+                      {showTargetKeyboard && (
+                        <div className="mt-2 border rounded-md p-2">
+                          <VirtualKeyboard
+                            layout={getKeyboardLayout(activeSet.targetLanguage)}
+                            onKeyPress={handleTargetKeyboardInput}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -234,8 +344,12 @@ export default function VocabularyPage() {
               ) : (
                 <div className="border rounded-lg overflow-hidden">
                   <div className="grid grid-cols-[1fr_1fr_auto] font-medium bg-muted p-3">
-                    <div>{languages.find((l) => l.value === activeSet.sourceLanguage)?.label}</div>
-                    <div>{languages.find((l) => l.value === activeSet.targetLanguage)?.label}</div>
+                    <div>
+                      {languages.find((l) => l.value === activeSet.sourceLanguage)?.label || activeSet.sourceLanguage}
+                    </div>
+                    <div>
+                      {languages.find((l) => l.value === activeSet.targetLanguage)?.label || activeSet.targetLanguage}
+                    </div>
                     <div className="w-10"></div>
                   </div>
                   {activeSet.words.map((word) => (

@@ -36,7 +36,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="space-x-4">
-                <Link href="/vocabulary">
+                <Link href="/vocabulary?tab=create">
                   <Button>Get Started</Button>
                 </Link>
                 <Link href="/about">

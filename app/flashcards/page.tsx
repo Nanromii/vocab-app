@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { VocabSet } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 export default function FlashcardsPage() {
   const { toast } = useToast()
@@ -111,18 +112,30 @@ export default function FlashcardsPage() {
   const languages = [
     { value: "english", label: "English" },
     { value: "vietnamese", label: "Vietnamese" },
-    { value: "french", label: "French" },
-    { value: "spanish", label: "Spanish" },
-    { value: "german", label: "German" },
     { value: "japanese", label: "Japanese" },
-    { value: "korean", label: "Korean" },
-    { value: "chinese", label: "Chinese" },
-    { value: "russian", label: "Russian" },
   ]
 
   return (
     <div className="container mx-auto py-6 px-4">
       <h1 className="text-3xl font-bold mb-6">Flashcards</h1>
+
+      <div className="flex items-center gap-4 mb-6">
+        <Link href="/">
+          <Button variant="outline" size="sm">
+            Home
+          </Button>
+        </Link>
+        <Link href="/vocabulary">
+          <Button variant="outline" size="sm">
+            Vocabulary
+          </Button>
+        </Link>
+        <Link href="/quiz">
+          <Button variant="outline" size="sm">
+            Quiz
+          </Button>
+        </Link>
+      </div>
 
       <div className="mb-6">
         <Select value={selectedSetId || ""} onValueChange={handleSelectSet}>
@@ -164,7 +177,8 @@ export default function FlashcardsPage() {
                   <CardContent className="flex items-center justify-center h-full p-6">
                     <div className="text-center">
                       <p className="text-sm text-gray-500 mb-2">
-                        {languages.find((l) => l.value === selectedSet.sourceLanguage)?.label}
+                        {languages.find((l) => l.value === selectedSet.sourceLanguage)?.label ||
+                          selectedSet.sourceLanguage}
                       </p>
                       <p className="text-2xl font-bold">{cards[currentIndex].word}</p>
                       <p className="text-xs text-gray-400 mt-4">Click to flip</p>
@@ -175,7 +189,8 @@ export default function FlashcardsPage() {
                   <CardContent className="flex items-center justify-center h-full p-6">
                     <div className="text-center">
                       <p className="text-sm text-gray-500 mb-2">
-                        {languages.find((l) => l.value === selectedSet.targetLanguage)?.label}
+                        {languages.find((l) => l.value === selectedSet.targetLanguage)?.label ||
+                          selectedSet.targetLanguage}
                       </p>
                       <p className="text-2xl font-bold">{cards[currentIndex].meaning}</p>
                       <p className="text-xs text-gray-400 mt-4">Click to flip</p>
