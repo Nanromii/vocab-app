@@ -14,20 +14,26 @@ export default function FlashcardsPage() {
   const [vocabSets, setVocabSets] = useState<VocabSet[]>([])
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [flipped, setFlipped] = useState(false)
+  const [currentLanguageIndex, setCurrentLanguageIndex] = useState(0)
   const [shuffled, setShuffled] = useState(false)
-  const [cards, setCards] = useState<{ word: string; meaning: string }[]>([])
+  const [cards, setCards] = useState<{ translations: Record<string, string> }[]>([])
+  const [allLanguages, setAllLanguages] = useState<string[]>([])
 
   // Load vocabulary sets from localStorage on component mount
   useEffect(() => {
     const savedSets = localStorage.getItem("vocabSets")
     if (savedSets) {
-      const sets = JSON.parse(savedSets)
-      setVocabSets(sets)
+      try {
+        const sets = JSON.parse(savedSets)
+        setVocabSets(sets)
 
-      // Auto-select the first set if available
-      if (sets.length > 0 && !selectedSetId) {
-        setSelectedSetId(sets[0].id)
+        // Auto-select the first set if available
+        if (sets.length > 0 && !selectedSetId) {
+          setSelectedSetId(sets[0].id)
+        }
+      } catch (e) {
+        console.error("Error loading vocabulary sets:", e)
+        setVocabSets([])
       }
     }
   }, [])
@@ -42,14 +48,17 @@ export default function FlashcardsPage() {
       return
     }
 
+    // Prepare all languages for this set
+    setAllLanguages(selectedSet.languages || [])
+
+    // Prepare cards
     const newCards = selectedSet.words.map((word) => ({
-      word: word.word,
-      meaning: word.meaning,
+      translations: word.translations || {},
     }))
 
     setCards(shuffled ? shuffleArray([...newCards]) : newCards)
     setCurrentIndex(0)
-    setFlipped(false)
+    setCurrentLanguageIndex(0)
   }, [selectedSetId, vocabSets, shuffled])
 
   const handleSelectSet = (id: string) => {
@@ -59,19 +68,21 @@ export default function FlashcardsPage() {
   const handleNext = () => {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(currentIndex + 1)
-      setFlipped(false)
+      setCurrentLanguageIndex(0)
     }
   }
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
-      setFlipped(false)
+      setCurrentLanguageIndex(0)
     }
   }
 
   const handleFlip = () => {
-    setFlipped(!flipped)
+    // Cycle through languages
+    const nextLanguageIndex = (currentLanguageIndex + 1) % allLanguages.length
+    setCurrentLanguageIndex(nextLanguageIndex)
   }
 
   const handleShuffle = () => {
@@ -80,7 +91,7 @@ export default function FlashcardsPage() {
     setShuffled(true)
     setCards(shuffleArray([...cards]))
     setCurrentIndex(0)
-    setFlipped(false)
+    setCurrentLanguageIndex(0)
 
     toast({
       title: "Cards shuffled",
@@ -90,7 +101,7 @@ export default function FlashcardsPage() {
 
   const handleReset = () => {
     setCurrentIndex(0)
-    setFlipped(false)
+    setCurrentLanguageIndex(0)
 
     toast({
       title: "Reset to beginning",
@@ -113,7 +124,23 @@ export default function FlashcardsPage() {
     { value: "english", label: "English" },
     { value: "vietnamese", label: "Vietnamese" },
     { value: "japanese", label: "Japanese" },
+    { value: "french", label: "French" },
+    { value: "spanish", label: "Spanish" },
+    { value: "german", label: "German" },
+    { value: "chinese", label: "Chinese" },
+    { value: "korean", label: "Korean" },
+    { value: "russian", label: "Russian" },
   ]
+
+  const getCurrentLanguage = () => {
+    if (!allLanguages.length) return ""
+    return allLanguages[currentLanguageIndex]
+  }
+
+  const getLanguageLabel = (code: string) => {
+    const language = languages.find((l) => l.value === code)
+    return language ? language.label : code
+  }
 
   return (
     <div className="container mx-auto py-6 px-4">
@@ -169,35 +196,23 @@ export default function FlashcardsPage() {
           </div>
 
           <div className="flex justify-center mb-8">
-            <div className="w-full max-w-md h-64 perspective-1000 cursor-pointer" onClick={handleFlip}>
-              <div
-                className={`relative w-full h-full transition-transform duration-500 transform-style-preserve-3d ${flipped ? "rotate-y-180" : ""}`}
-              >
-                <Card className="absolute w-full h-full backface-hidden">
-                  <CardContent className="flex items-center justify-center h-full p-6">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500 mb-2">
-                        {languages.find((l) => l.value === selectedSet.sourceLanguage)?.label ||
-                          selectedSet.sourceLanguage}
-                      </p>
-                      <p className="text-2xl font-bold">{cards[currentIndex].word}</p>
-                      <p className="text-xs text-gray-400 mt-4">Click to flip</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="absolute w-full h-full backface-hidden rotate-y-180">
-                  <CardContent className="flex items-center justify-center h-full p-6">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500 mb-2">
-                        {languages.find((l) => l.value === selectedSet.targetLanguage)?.label ||
-                          selectedSet.targetLanguage}
-                      </p>
-                      <p className="text-2xl font-bold">{cards[currentIndex].meaning}</p>
-                      <p className="text-xs text-gray-400 mt-4">Click to flip</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            <div className="w-full max-w-md h-64 cursor-pointer" onClick={handleFlip}>
+              <Card className="w-full h-full">
+                <CardContent className="flex items-center justify-center h-full p-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-500 mb-2">
+                      {getLanguageLabel(getCurrentLanguage())}
+                      <span className="text-xs ml-2">
+                        ({currentLanguageIndex + 1}/{allLanguages.length})
+                      </span>
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {cards[currentIndex].translations[getCurrentLanguage()] || "-"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-4">Click to see next language</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 

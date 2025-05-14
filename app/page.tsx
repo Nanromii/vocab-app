@@ -39,9 +39,6 @@ export default function HomePage() {
                 <Link href="/vocabulary?tab=create">
                   <Button>Get Started</Button>
                 </Link>
-                <Link href="/about">
-                  <Button variant="outline">Learn More</Button>
-                </Link>
               </div>
             </div>
           </div>

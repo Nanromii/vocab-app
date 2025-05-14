@@ -1,38 +1,84 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, X, Languages, Globe } from "lucide-react"
+import { Plus, Trash2, X, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import type { VocabSet, VocabWord } from "@/lib/types"
 import Link from "next/link"
 import { Textarea } from "@/components/ui/textarea"
-import { VirtualKeyboard } from "@/components/virtual-keyboard"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function VocabularyPage() {
   const { toast } = useToast()
   const [vocabSets, setVocabSets] = useState<VocabSet[]>([])
   const [newSetName, setNewSetName] = useState("")
-  const [newSetLanguage, setNewSetLanguage] = useState("english")
-  const [newSetTargetLanguage, setNewSetTargetLanguage] = useState("vietnamese")
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["english", "vietnamese"])
   const [activeSet, setActiveSet] = useState<VocabSet | null>(null)
-  const [newWord, setNewWord] = useState("")
-  const [newMeaning, setNewMeaning] = useState("")
-  const [editMode, setEditMode] = useState(false)
+  const [newTranslations, setNewTranslations] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState("sets")
-  const [showSourceKeyboard, setShowSourceKeyboard] = useState(false)
-  const [showTargetKeyboard, setShowTargetKeyboard] = useState(false)
 
   // Load vocabulary sets from localStorage on component mount
   useEffect(() => {
     const savedSets = localStorage.getItem("vocabSets")
     if (savedSets) {
-      setVocabSets(JSON.parse(savedSets))
+      try {
+        const sets = JSON.parse(savedSets)
+
+        // Handle migration from old format to new format if needed
+        const migratedSets = sets.map((set: any) => {
+          if (!set.languages && (set.sourceLanguages || set.sourceLanguage)) {
+            // Convert old format to new format
+            const languages = [...(set.sourceLanguages || [set.sourceLanguage]), set.targetLanguage].filter(Boolean)
+
+            // Convert words to new format
+            const words = set.words.map((word: any) => {
+              const translations: Record<string, string> = {}
+
+              // Add source language translations
+              if (set.sourceLanguages) {
+                set.sourceLanguages.forEach((lang: string) => {
+                  if (word.translations && word.translations[lang]) {
+                    translations[lang] = word.translations[lang]
+                  }
+                })
+              }
+
+              // Add original word
+              if (set.sourceLanguage && word.word) {
+                translations[set.sourceLanguage] = word.word
+              }
+
+              // Add target language translation
+              if (set.targetLanguage && word.meaning) {
+                translations[set.targetLanguage] = word.meaning
+              }
+
+              return {
+                id: word.id,
+                translations,
+                createdAt: word.createdAt,
+              }
+            })
+
+            return {
+              ...set,
+              languages,
+              words,
+            }
+          }
+          return set
+        })
+
+        setVocabSets(migratedSets)
+      } catch (e) {
+        console.error("Error loading vocabulary sets:", e)
+        setVocabSets([])
+      }
     }
   }, [])
 
@@ -50,6 +96,17 @@ export default function VocabularyPage() {
     }
   }, [])
 
+  // Initialize newTranslations when activeSet changes
+  useEffect(() => {
+    if (activeSet) {
+      const initialTranslations: Record<string, string> = {}
+      activeSet.languages.forEach((lang) => {
+        initialTranslations[lang] = ""
+      })
+      setNewTranslations(initialTranslations)
+    }
+  }, [activeSet])
+
   const createNewSet = () => {
     if (!newSetName.trim()) {
       toast({
@@ -60,11 +117,19 @@ export default function VocabularyPage() {
       return
     }
 
+    if (selectedLanguages.length < 2) {
+      toast({
+        title: "Error",
+        description: "Please select at least two languages",
+        variant: "destructive",
+      })
+      return
+    }
+
     const newSet: VocabSet = {
       id: Date.now().toString(),
       name: newSetName,
-      sourceLanguage: newSetLanguage,
-      targetLanguage: newSetTargetLanguage,
+      languages: selectedLanguages,
       words: [],
       createdAt: new Date().toISOString(),
     }
@@ -72,6 +137,7 @@ export default function VocabularyPage() {
     setVocabSets([...vocabSets, newSet])
     setNewSetName("")
     setActiveSet(newSet)
+    setActiveTab("sets") // Switch to sets tab
     toast({
       title: "Success",
       description: "New vocabulary set created",
@@ -91,19 +157,30 @@ export default function VocabularyPage() {
 
   const addWord = () => {
     if (!activeSet) return
-    if (!newWord.trim() || !newMeaning.trim()) {
+
+    // Check if at least one translation is provided
+    const hasTranslation = Object.values(newTranslations).some((text) => text.trim() !== "")
+
+    if (!hasTranslation) {
       toast({
         title: "Error",
-        description: "Please enter both word and meaning",
+        description: "Please enter at least one translation",
         variant: "destructive",
       })
       return
     }
 
+    // Create translations object
+    const translations: Record<string, string> = {}
+    Object.entries(newTranslations).forEach(([lang, text]) => {
+      if (text.trim()) {
+        translations[lang] = text.trim()
+      }
+    })
+
     const newWordObj: VocabWord = {
       id: Date.now().toString(),
-      word: newWord,
-      meaning: newMeaning,
+      translations,
       createdAt: new Date().toISOString(),
     }
 
@@ -114,8 +191,14 @@ export default function VocabularyPage() {
 
     setVocabSets(vocabSets.map((set) => (set.id === activeSet.id ? updatedSet : set)))
     setActiveSet(updatedSet)
-    setNewWord("")
-    setNewMeaning("")
+
+    // Reset form
+    const resetTranslations: Record<string, string> = {}
+    activeSet.languages.forEach((lang) => {
+      resetTranslations[lang] = ""
+    })
+    setNewTranslations(resetTranslations)
+
     toast({
       title: "Success",
       description: "Word added to vocabulary set",
@@ -136,34 +219,45 @@ export default function VocabularyPage() {
     })
   }
 
-  // Simplified language list focusing on Japanese, English, and Vietnamese
+  const handleLanguageCheckboxChange = (language: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLanguages([...selectedLanguages, language])
+    } else {
+      if (selectedLanguages.length > 2) {
+        setSelectedLanguages(selectedLanguages.filter((lang) => lang !== language))
+      } else {
+        toast({
+          title: "Error",
+          description: "You must select at least two languages",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleTranslationChange = (language: string, value: string) => {
+    setNewTranslations({
+      ...newTranslations,
+      [language]: value,
+    })
+  }
+
+  // Language list
   const languages = [
-    { value: "english", label: "English", keyboard: "en" },
-    { value: "vietnamese", label: "Vietnamese", keyboard: "vi" },
-    { value: "japanese", label: "Japanese", keyboard: "ja" },
+    { value: "english", label: "English" },
+    { value: "vietnamese", label: "Vietnamese" },
+    { value: "japanese", label: "Japanese" },
+    { value: "french", label: "French" },
+    { value: "spanish", label: "Spanish" },
+    { value: "german", label: "German" },
+    { value: "chinese", label: "Chinese" },
+    { value: "korean", label: "Korean" },
+    { value: "russian", label: "Russian" },
   ]
 
-  const getKeyboardLayout = (languageCode: string) => {
-    const language = languages.find((lang) => lang.value === languageCode)
-    return language?.keyboard || "en"
-  }
-
-  const handleSourceKeyboardInput = (char: string) => {
-    if (char === "\b") {
-      // Handle backspace
-      setNewWord(newWord.slice(0, -1))
-    } else {
-      setNewWord(newWord + char)
-    }
-  }
-
-  const handleTargetKeyboardInput = (char: string) => {
-    if (char === "\b") {
-      // Handle backspace
-      setNewMeaning(newMeaning.slice(0, -1))
-    } else {
-      setNewMeaning(newMeaning + char)
-    }
+  const getLanguageLabel = (code: string) => {
+    const language = languages.find((l) => l.value === code)
+    return language ? language.label : code
   }
 
   return (
@@ -209,8 +303,8 @@ export default function VocabularyPage() {
                   <CardHeader>
                     <CardTitle>{set.name}</CardTitle>
                     <CardDescription>
-                      {languages.find((l) => l.value === set.sourceLanguage)?.label || set.sourceLanguage} to{" "}
-                      {languages.find((l) => l.value === set.targetLanguage)?.label || set.targetLanguage} •{" "}
+                      {set.languages?.map((lang) => getLanguageLabel(lang)).join(", ") || "Multiple languages"}
+                      {" • "}
                       {set.words.length} words
                     </CardDescription>
                   </CardHeader>
@@ -233,8 +327,7 @@ export default function VocabularyPage() {
                 <h2 className="text-2xl font-bold">
                   {activeSet.name}{" "}
                   <span className="text-sm font-normal text-gray-500">
-                    ({languages.find((l) => l.value === activeSet.sourceLanguage)?.label || activeSet.sourceLanguage} to{" "}
-                    {languages.find((l) => l.value === activeSet.targetLanguage)?.label || activeSet.targetLanguage})
+                    ({activeSet.languages?.map((lang) => getLanguageLabel(lang)).join(", ") || "Multiple languages"})
                   </span>
                 </h2>
                 <div className="flex items-center gap-2">
@@ -260,74 +353,18 @@ export default function VocabularyPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="new-word">
-                          {languages.find((l) => l.value === activeSet.sourceLanguage)?.label ||
-                            activeSet.sourceLanguage}{" "}
-                          Word
-                        </Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowSourceKeyboard(!showSourceKeyboard)}
-                          className="h-8 px-2"
-                        >
-                          <Globe className="h-4 w-4 mr-1" />
-                          {showSourceKeyboard ? "Hide Keyboard" : "Show Keyboard"}
-                        </Button>
+                    {activeSet.languages?.map((language) => (
+                      <div key={language} className="space-y-2">
+                        <Label htmlFor={`translation-${language}`}>{getLanguageLabel(language)}</Label>
+                        <Textarea
+                          id={`translation-${language}`}
+                          value={newTranslations[language] || ""}
+                          onChange={(e) => handleTranslationChange(language, e.target.value)}
+                          placeholder={`Enter ${getLanguageLabel(language)} translation`}
+                          className="min-h-[80px]"
+                        />
                       </div>
-                      <Textarea
-                        id="new-word"
-                        value={newWord}
-                        onChange={(e) => setNewWord(e.target.value)}
-                        placeholder="Enter word"
-                        className="min-h-[80px]"
-                        lang={getKeyboardLayout(activeSet.sourceLanguage)}
-                      />
-                      {showSourceKeyboard && (
-                        <div className="mt-2 border rounded-md p-2">
-                          <VirtualKeyboard
-                            layout={getKeyboardLayout(activeSet.sourceLanguage)}
-                            onKeyPress={handleSourceKeyboardInput}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="new-meaning">
-                          {languages.find((l) => l.value === activeSet.targetLanguage)?.label ||
-                            activeSet.targetLanguage}{" "}
-                          Meaning
-                        </Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowTargetKeyboard(!showTargetKeyboard)}
-                          className="h-8 px-2"
-                        >
-                          <Globe className="h-4 w-4 mr-1" />
-                          {showTargetKeyboard ? "Hide Keyboard" : "Show Keyboard"}
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="new-meaning"
-                        value={newMeaning}
-                        onChange={(e) => setNewMeaning(e.target.value)}
-                        placeholder="Enter meaning"
-                        className="min-h-[80px]"
-                        lang={getKeyboardLayout(activeSet.targetLanguage)}
-                      />
-                      {showTargetKeyboard && (
-                        <div className="mt-2 border rounded-md p-2">
-                          <VirtualKeyboard
-                            layout={getKeyboardLayout(activeSet.targetLanguage)}
-                            onKeyPress={handleTargetKeyboardInput}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -342,20 +379,31 @@ export default function VocabularyPage() {
                   <p className="text-gray-500">No words in this set yet. Add your first word above.</p>
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-[1fr_1fr_auto] font-medium bg-muted p-3">
-                    <div>
-                      {languages.find((l) => l.value === activeSet.sourceLanguage)?.label || activeSet.sourceLanguage}
-                    </div>
-                    <div>
-                      {languages.find((l) => l.value === activeSet.targetLanguage)?.label || activeSet.targetLanguage}
-                    </div>
+                <div className="border rounded-lg overflow-hidden overflow-x-auto">
+                  <div
+                    className="grid font-medium bg-muted p-3"
+                    style={{
+                      gridTemplateColumns: `repeat(${activeSet.languages?.length || 1}, 1fr) auto`,
+                    }}
+                  >
+                    {activeSet.languages?.map((language) => (
+                      <div key={language}>{getLanguageLabel(language)}</div>
+                    ))}
                     <div className="w-10"></div>
                   </div>
                   {activeSet.words.map((word) => (
-                    <div key={word.id} className="grid grid-cols-[1fr_1fr_auto] p-3 border-t">
-                      <div>{word.word}</div>
-                      <div>{word.meaning}</div>
+                    <div
+                      key={word.id}
+                      className="grid p-3 border-t"
+                      style={{
+                        gridTemplateColumns: `repeat(${activeSet.languages?.length || 1}, 1fr) auto`,
+                      }}
+                    >
+                      {activeSet.languages?.map((language) => (
+                        <div key={language}>
+                          {word.translations && word.translations[language] ? word.translations[language] : "-"}
+                        </div>
+                      ))}
                       <div>
                         <Button variant="ghost" size="icon" onClick={() => deleteWord(word.id)}>
                           <Trash2 className="h-4 w-4" />
@@ -386,36 +434,21 @@ export default function VocabularyPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="source-language">Source Language</Label>
-                  <Select value={newSetLanguage} onValueChange={setNewSetLanguage}>
-                    <SelectTrigger id="source-language">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>
-                          {lang.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="target-language">Target Language</Label>
-                  <Select value={newSetTargetLanguage} onValueChange={setNewSetTargetLanguage}>
-                    <SelectTrigger id="target-language">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>
-                          {lang.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <Label>Languages (select at least two)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+                  {languages.map((language) => (
+                    <div key={language.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`lang-${language.value}`}
+                        checked={selectedLanguages.includes(language.value)}
+                        onCheckedChange={(checked) => handleLanguageCheckboxChange(language.value, checked as boolean)}
+                      />
+                      <Label htmlFor={`lang-${language.value}`} className="cursor-pointer">
+                        {language.label}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>

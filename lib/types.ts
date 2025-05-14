@@ -1,15 +1,13 @@
 export type VocabWord = {
   id: string
-  word: string
-  meaning: string
+  translations: Record<string, string> // Lưu trữ nghĩa của từ trong các ngôn ngữ khác nhau
   createdAt: string
 }
 
 export type VocabSet = {
   id: string
   name: string
-  sourceLanguage: string
-  targetLanguage: string
+  languages: string[] // Danh sách các ngôn ngữ trong bộ từ vựng
   words: VocabWord[]
   createdAt: string
 }

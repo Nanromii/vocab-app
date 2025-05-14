@@ -7,30 +7,25 @@ import { Check, X, Shuffle, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
 import type { VocabSet } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 type QuizQuestion = {
   id: string
-  word: string
-  correctAnswer: string
-  options?: string[]
+  questionLanguage: string
+  questionText: string
+  correctAnswers: { language: string; text: string }[]
   userAnswer?: string
   isCorrect?: boolean
 }
-
-type QuizType = "multiple-choice" | "write-answer"
 
 export default function QuizPage() {
   const { toast } = useToast()
   const [vocabSets, setVocabSets] = useState<VocabSet[]>([])
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
-  const [quizType, setQuizType] = useState<QuizType>("multiple-choice")
   const [questionCount, setQuestionCount] = useState(10)
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -38,12 +33,19 @@ export default function QuizPage() {
   const [quizCompleted, setQuizCompleted] = useState(false)
   const [currentAnswer, setCurrentAnswer] = useState("")
   const [score, setScore] = useState(0)
+  const [inputError, setInputError] = useState<string | null>(null)
 
   // Load vocabulary sets from localStorage on component mount
   useEffect(() => {
     const savedSets = localStorage.getItem("vocabSets")
     if (savedSets) {
-      setVocabSets(JSON.parse(savedSets))
+      try {
+        const sets = JSON.parse(savedSets)
+        setVocabSets(sets)
+      } catch (e) {
+        console.error("Error loading vocabulary sets:", e)
+        setVocabSets([])
+      }
     }
   }, [])
 
@@ -54,15 +56,34 @@ export default function QuizPage() {
     setQuestions([])
   }
 
-  const handleQuizTypeChange = (type: QuizType) => {
-    setQuizType(type)
-  }
+  const handleQuestionCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Allow empty input temporarily for better UX
+    if (e.target.value === "") {
+      setQuestionCount(0)
+      setInputError(null)
+      return
+    }
 
-  const handleQuestionCountChange = (value: number[]) => {
-    setQuestionCount(value[0])
+    const value = Number.parseInt(e.target.value)
+    if (!isNaN(value)) {
+      setQuestionCount(value)
+
+      // Validate the input range
+      if (value < 1 || value > 100) {
+        setInputError("Hãy nhập các số từ 1 -> 100")
+      } else {
+        setInputError(null)
+      }
+    }
   }
 
   const generateQuiz = () => {
+    // Validate input before generating quiz
+    if (questionCount < 1 || questionCount > 100) {
+      setInputError("Hãy nhập các số từ 1 -> 100")
+      return
+    }
+
     if (!selectedSetId) {
       toast({
         title: "Error",
@@ -89,32 +110,48 @@ export default function QuizPage() {
       })
     }
 
+    // Filter words that have at least two translations
+    const validWords = selectedSet.words.filter((word) => {
+      const translationCount = Object.keys(word.translations || {}).length
+      return translationCount >= 2
+    })
+
+    if (validWords.length === 0) {
+      toast({
+        title: "Error",
+        description: "This set doesn't have any words with multiple translations. Add more translations first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     // Shuffle and select words for the quiz
-    const shuffledWords = [...selectedSet.words].sort(() => Math.random() - 0.5)
+    const shuffledWords = [...validWords].sort(() => Math.random() - 0.5)
     const selectedWords = shuffledWords.slice(0, Math.min(questionCount, shuffledWords.length))
 
-    // Generate questions based on quiz type
+    // Generate questions
     const newQuestions: QuizQuestion[] = selectedWords.map((word) => {
-      const question: QuizQuestion = {
+      // Get all languages that have translations for this word
+      const availableLanguages = Object.keys(word.translations || {})
+
+      // Randomly select one language for the question
+      const questionLanguage = availableLanguages[Math.floor(Math.random() * availableLanguages.length)]
+      const questionText = word.translations[questionLanguage]
+
+      // All other translations are correct answers
+      const correctAnswers = availableLanguages
+        .filter((lang) => lang !== questionLanguage)
+        .map((lang) => ({
+          language: lang,
+          text: word.translations[lang],
+        }))
+
+      return {
         id: word.id,
-        word: word.word,
-        correctAnswer: word.meaning,
+        questionLanguage,
+        questionText,
+        correctAnswers,
       }
-
-      if (quizType === "multiple-choice") {
-        // Generate 3 incorrect options
-        const incorrectOptions = selectedSet.words
-          .filter((w) => w.id !== word.id)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3)
-          .map((w) => w.meaning)
-
-        // Add correct answer and shuffle
-        const allOptions = [...incorrectOptions, word.meaning].sort(() => Math.random() - 0.5)
-        question.options = allOptions
-      }
-
-      return question
     })
 
     setQuestions(newQuestions)
@@ -134,7 +171,11 @@ export default function QuizPage() {
     if (currentQuestionIndex >= questions.length) return
 
     const currentQuestion = questions[currentQuestionIndex]
-    const isCorrect = currentAnswer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase()
+
+    // Check if the answer is correct (case insensitive)
+    const isCorrect = currentQuestion.correctAnswers.some(
+      (answer) => currentAnswer.toLowerCase() === answer.text.toLowerCase(),
+    )
 
     // Update question with user's answer
     const updatedQuestions = [...questions]
@@ -162,10 +203,6 @@ export default function QuizPage() {
         description: `Your score: ${score + (isCorrect ? 1 : 0)}/${questions.length}`,
       })
     }
-  }
-
-  const handleMultipleChoiceSelect = (option: string) => {
-    setCurrentAnswer(option)
   }
 
   const handleWriteAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,7 +238,18 @@ export default function QuizPage() {
     { value: "english", label: "English" },
     { value: "vietnamese", label: "Vietnamese" },
     { value: "japanese", label: "Japanese" },
+    { value: "french", label: "French" },
+    { value: "spanish", label: "Spanish" },
+    { value: "german", label: "German" },
+    { value: "chinese", label: "Chinese" },
+    { value: "korean", label: "Korean" },
+    { value: "russian", label: "Russian" },
   ]
+
+  const getLanguageLabel = (code: string) => {
+    const language = languages.find((l) => l.value === code)
+    return language ? language.label : code
+  }
 
   return (
     <div className="container mx-auto py-6 px-4">
@@ -249,41 +297,22 @@ export default function QuizPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Quiz Type</Label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant={quizType === "multiple-choice" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => handleQuizTypeChange("multiple-choice")}
-                >
-                  Multiple Choice
-                </Button>
-                <Button
-                  variant={quizType === "write-answer" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => handleQuizTypeChange("write-answer")}
-                >
-                  Write Answer
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Number of Questions</Label>
-                <span className="text-sm">{questionCount}</span>
-              </div>
-              <Slider
-                value={[questionCount]}
-                min={5}
-                max={Math.max(maxQuestionCount, 5)}
-                step={1}
-                onValueChange={handleQuestionCountChange}
+              <Label htmlFor="question-count">Number of Questions</Label>
+              <Input
+                id="question-count"
+                type="number"
+                min="1"
+                max="100"
+                value={questionCount || ""}
+                onChange={handleQuestionCountChange}
+                placeholder="Enter number of questions"
+                className={inputError ? "border-red-500" : ""}
               />
+              {inputError && <p className="text-sm text-red-500 mt-1">{inputError}</p>}
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={generateQuiz} className="w-full">
+            <Button onClick={generateQuiz} className="w-full" disabled={!!inputError || !selectedSetId}>
               <Shuffle className="mr-2 h-4 w-4" /> Generate Quiz
             </Button>
           </CardFooter>
@@ -304,13 +333,16 @@ export default function QuizPage() {
 
               <div className="border rounded-lg overflow-hidden">
                 <div className="grid grid-cols-[1fr_1fr_auto] font-medium bg-muted p-3">
-                  <div>Word</div>
+                  <div>Question</div>
                   <div>Your Answer</div>
                   <div className="w-10"></div>
                 </div>
                 {questions.map((question, index) => (
                   <div key={question.id} className="grid grid-cols-[1fr_1fr_auto] p-3 border-t">
-                    <div>{question.word}</div>
+                    <div>
+                      <span className="text-sm text-gray-500">{getLanguageLabel(question.questionLanguage)}: </span>
+                      {question.questionText}
+                    </div>
                     <div>{question.userAnswer || "-"}</div>
                     <div>
                       {question.isCorrect ? (
@@ -318,7 +350,11 @@ export default function QuizPage() {
                       ) : (
                         <div className="flex flex-col">
                           <X className="h-5 w-5 text-red-500" />
-                          <span className="text-xs text-gray-500">{question.correctAnswer}</span>
+                          <span className="text-xs text-gray-500">
+                            {question.correctAnswers
+                              .map((answer) => `${getLanguageLabel(answer.language)}: ${answer.text}`)
+                              .join(", ")}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -348,12 +384,9 @@ export default function QuizPage() {
               </div>
             </div>
             <CardDescription>
-              {selectedSet && (
+              {currentQuestion && (
                 <span>
-                  Translate from{" "}
-                  {languages.find((l) => l.value === selectedSet.sourceLanguage)?.label || selectedSet.sourceLanguage}{" "}
-                  to{" "}
-                  {languages.find((l) => l.value === selectedSet.targetLanguage)?.label || selectedSet.targetLanguage}
+                  Translate this {getLanguageLabel(currentQuestion.questionLanguage)} word to any other language
                 </span>
               )}
             </CardDescription>
@@ -361,36 +394,17 @@ export default function QuizPage() {
           <CardContent>
             {currentQuestion && (
               <div className="space-y-6">
-                <div className="text-2xl font-bold text-center py-4">{currentQuestion.word}</div>
+                <div className="text-2xl font-bold text-center py-4">{currentQuestion.questionText}</div>
 
-                {quizType === "multiple-choice" && currentQuestion.options && (
-                  <RadioGroup value={currentAnswer} className="space-y-3">
-                    {currentQuestion.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <RadioGroupItem
-                          value={option}
-                          id={`option-${index}`}
-                          onClick={() => handleMultipleChoiceSelect(option)}
-                        />
-                        <Label htmlFor={`option-${index}`} className="flex-1 py-2">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {quizType === "write-answer" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="answer">Your Answer</Label>
-                    <Input
-                      id="answer"
-                      value={currentAnswer}
-                      onChange={handleWriteAnswerChange}
-                      placeholder="Type your answer..."
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="answer">Your Answer</Label>
+                  <Input
+                    id="answer"
+                    value={currentAnswer}
+                    onChange={handleWriteAnswerChange}
+                    placeholder="Type your answer..."
+                  />
+                </div>
               </div>
             )}
           </CardContent>
