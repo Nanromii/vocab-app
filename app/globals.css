@@ -4,48 +4,65 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 280 30% 98%;
+    --foreground: 280 10% 20%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 280 10% 20%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 280 10% 20%;
+
+    --primary: 280 65% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 280 30% 94%;
+    --secondary-foreground: 280 20% 30%;
+
+    --muted: 280 20% 94%;
+    --muted-foreground: 280 10% 50%;
+
+    --accent: 280 40% 92%;
+    --accent-foreground: 280 20% 30%;
+
+    --destructive: 350 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 280 30% 90%;
+    --input: 280 30% 90%;
+    --ring: 280 65% 65%;
+
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 280 30% 10%;
+    --foreground: 280 10% 95%;
+
+    --card: 280 30% 12%;
+    --card-foreground: 280 10% 95%;
+
+    --popover: 280 30% 12%;
+    --popover-foreground: 280 10% 95%;
+
+    --primary: 280 65% 70%;
+    --primary-foreground: 280 10% 10%;
+
+    --secondary: 280 30% 20%;
+    --secondary-foreground: 280 10% 95%;
+
+    --muted: 280 30% 20%;
+    --muted-foreground: 280 10% 70%;
+
+    --accent: 280 30% 25%;
+    --accent-foreground: 280 10% 95%;
+
+    --destructive: 350 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 280 30% 25%;
+    --input: 280 30% 25%;
+    --ring: 280 65% 70%;
   }
 }
 
@@ -73,5 +90,203 @@
 
   .rotate-y-180 {
     transform: rotateY(180deg);
+  }
+
+  .duration-600 {
+    transition-duration: 600ms;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+}
+
+/* Cute pastel decorations */
+.card {
+  box-shadow: 0 4px 15px rgba(186, 156, 214, 0.2);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 8px 25px rgba(186, 156, 214, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Rounded buttons */
+.btn,
+button {
+  transition: all 0.3s ease;
+}
+
+/* Cute focus styles */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 2px rgba(186, 156, 214, 0.4);
+}
+
+/* Soft page background with subtle pattern */
+body {
+  background-image: radial-gradient(rgba(186, 156, 214, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Cute scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(186, 156, 214, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(186, 156, 214, 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(186, 156, 214, 0.7);
+}
+
+/* Emoji animations */
+.emoji-bounce {
+  animation: bounce 2s infinite;
+}
+
+.emoji-pulse {
+  animation: pulse 2s infinite;
+}
+
+.emoji-wiggle {
+  animation: wiggle 2.5s infinite;
+}
+
+.emoji-shake {
+  animation: shake 3s infinite;
+}
+
+.emoji-tear {
+  animation: tear 3s infinite;
+}
+
+.animate-check {
+  animation: check 0.5s ease-in-out;
+}
+
+.animate-wrong {
+  animation: wrong 0.5s ease-in-out;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes tear {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateY(2px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes check {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wrong {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
   }
 }

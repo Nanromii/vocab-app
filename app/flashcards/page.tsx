@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from "lucide-react"
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { VocabSet } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -18,6 +18,8 @@ export default function FlashcardsPage() {
   const [shuffled, setShuffled] = useState(false)
   const [cards, setCards] = useState<{ translations: Record<string, string> }[]>([])
   const [allLanguages, setAllLanguages] = useState<string[]>([])
+  const [showFront, setShowFront] = useState(true)
+  const [nextLanguageIndex, setNextLanguageIndex] = useState(0)
 
   // Load vocabulary sets from localStorage on component mount
   useEffect(() => {
@@ -59,6 +61,8 @@ export default function FlashcardsPage() {
     setCards(shuffled ? shuffleArray([...newCards]) : newCards)
     setCurrentIndex(0)
     setCurrentLanguageIndex(0)
+    setNextLanguageIndex(0)
+    setShowFront(true)
   }, [selectedSetId, vocabSets, shuffled])
 
   const handleSelectSet = (id: string) => {
@@ -67,22 +71,40 @@ export default function FlashcardsPage() {
 
   const handleNext = () => {
     if (currentIndex < cards.length - 1) {
-      setCurrentIndex(currentIndex + 1)
+      // Prepare next card
+      const nextIndex = currentIndex + 1
+      setCurrentIndex(nextIndex)
       setCurrentLanguageIndex(0)
+      setNextLanguageIndex(0)
+      setShowFront(true)
     }
   }
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
+      // Prepare previous card
+      const prevIndex = currentIndex - 1
+      setCurrentIndex(prevIndex)
       setCurrentLanguageIndex(0)
+      setNextLanguageIndex(0)
+      setShowFront(true)
     }
   }
 
   const handleFlip = () => {
-    // Cycle through languages
-    const nextLanguageIndex = (currentLanguageIndex + 1) % allLanguages.length
-    setCurrentLanguageIndex(nextLanguageIndex)
+    // Calculate the next language index
+    const nextLangIndex = (currentLanguageIndex + 1) % allLanguages.length
+
+    // Set the next language index that will be shown after flip
+    setNextLanguageIndex(nextLangIndex)
+
+    // Flip the card
+    setShowFront(!showFront)
+
+    // After the flip animation completes, update the current language
+    setTimeout(() => {
+      setCurrentLanguageIndex(nextLangIndex)
+    }, 300)
   }
 
   const handleShuffle = () => {
@@ -92,6 +114,8 @@ export default function FlashcardsPage() {
     setCards(shuffleArray([...cards]))
     setCurrentIndex(0)
     setCurrentLanguageIndex(0)
+    setNextLanguageIndex(0)
+    setShowFront(true)
 
     toast({
       title: "Cards shuffled",
@@ -102,6 +126,8 @@ export default function FlashcardsPage() {
   const handleReset = () => {
     setCurrentIndex(0)
     setCurrentLanguageIndex(0)
+    setNextLanguageIndex(0)
+    setShowFront(true)
 
     toast({
       title: "Reset to beginning",
@@ -137,36 +163,63 @@ export default function FlashcardsPage() {
     return allLanguages[currentLanguageIndex]
   }
 
+  const getNextLanguage = () => {
+    if (!allLanguages.length) return ""
+    return allLanguages[nextLanguageIndex]
+  }
+
   const getLanguageLabel = (code: string) => {
     const language = languages.find((l) => l.value === code)
     return language ? language.label : code
   }
 
+  const getCurrentTranslation = () => {
+    if (!cards.length || currentIndex >= cards.length) return "-"
+    const currentLang = getCurrentLanguage()
+    return cards[currentIndex].translations[currentLang] || "-"
+  }
+
+  const getNextTranslation = () => {
+    if (!cards.length || currentIndex >= cards.length) return "-"
+    const nextLang = getNextLanguage()
+    return cards[currentIndex].translations[nextLang] || "-"
+  }
+
   return (
     <div className="container mx-auto py-6 px-4">
-      <h1 className="text-3xl font-bold mb-6">Flashcards</h1>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Flashcards</h1>
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6 flex-wrap">
         <Link href="/">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-pink" size="sm" className="rounded-full">
             Home
           </Button>
         </Link>
         <Link href="/vocabulary">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-green" size="sm" className="rounded-full">
             Vocabulary
           </Button>
         </Link>
         <Link href="/quiz">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-purple" size="sm" className="rounded-full">
             Quiz
+          </Button>
+        </Link>
+        <Link href="/matching">
+          <Button variant="nav-yellow" size="sm" className="rounded-full">
+            Matching
+          </Button>
+        </Link>
+        <Link href="/puzzle">
+          <Button variant="nav-green" size="sm" className="rounded-full">
+            Puzzle
           </Button>
         </Link>
       </div>
 
       <div className="mb-6">
         <Select value={selectedSetId || ""} onValueChange={handleSelectSet}>
-          <SelectTrigger>
+          <SelectTrigger className="border-primary/20 focus:border-primary rounded-full">
             <SelectValue placeholder="Select a vocabulary set" />
           </SelectTrigger>
           <SelectContent>
@@ -182,55 +235,80 @@ export default function FlashcardsPage() {
       {selectedSet && cards.length > 0 ? (
         <>
           <div className="flex justify-between items-center mb-4">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               Card {currentIndex + 1} of {cards.length}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleShuffle}>
+              <Button variant="outline" size="sm" onClick={handleShuffle} className="rounded-full">
                 <Shuffle className="h-4 w-4 mr-2" /> Shuffle
               </Button>
-              <Button variant="outline" size="sm" onClick={handleReset}>
+              <Button variant="outline" size="sm" onClick={handleReset} className="rounded-full">
                 <RotateCcw className="h-4 w-4 mr-2" /> Reset
               </Button>
             </div>
           </div>
 
           <div className="flex justify-center mb-8">
-            <div className="w-full max-w-md h-64 cursor-pointer" onClick={handleFlip}>
-              <Card className="w-full h-full">
-                <CardContent className="flex items-center justify-center h-full p-6">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-500 mb-2">
-                      {getLanguageLabel(getCurrentLanguage())}
-                      <span className="text-xs ml-2">
-                        ({currentLanguageIndex + 1}/{allLanguages.length})
-                      </span>
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {cards[currentIndex].translations[getCurrentLanguage()] || "-"}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-4">Click to see next language</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="w-full max-w-md h-64 cursor-pointer perspective-1000" onClick={handleFlip}>
+              <div
+                className={`relative w-full h-full transform-style-preserve-3d transition-transform duration-600 ${
+                  showFront ? "" : "rotate-y-180"
+                }`}
+              >
+                {/* Front of card */}
+                <div className="absolute w-full h-full backface-hidden">
+                  <Card className="w-full h-full bg-gradient-to-br from-primary/5 to-primary/20 border-primary/20 flex items-center justify-center p-6">
+                    <div className="text-center">
+                      <p className="text-sm text-primary/70 mb-2">
+                        {getLanguageLabel(getCurrentLanguage())}
+                        <span className="text-xs ml-2 bg-primary/10 px-2 py-1 rounded-full">
+                          {currentLanguageIndex + 1}/{allLanguages.length}
+                        </span>
+                      </p>
+                      <p className="text-2xl font-bold">{getCurrentTranslation()}</p>
+                      <p className="text-xs text-muted-foreground mt-4 bg-primary/5 px-3 py-1 rounded-full inline-block">
+                        <Sparkles className="h-3 w-3 inline mr-1" /> Click to flip
+                      </p>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Back of card */}
+                <div className="absolute w-full h-full backface-hidden rotate-y-180">
+                  <Card className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20 flex items-center justify-center p-6">
+                    <div className="text-center">
+                      <p className="text-sm text-primary/70 mb-2">
+                        {getLanguageLabel(getNextLanguage())}
+                        <span className="text-xs ml-2 bg-primary/10 px-2 py-1 rounded-full">
+                          {nextLanguageIndex + 1}/{allLanguages.length}
+                        </span>
+                      </p>
+                      <p className="text-2xl font-bold">{getNextTranslation()}</p>
+                      <p className="text-xs text-muted-foreground mt-4 bg-primary/5 px-3 py-1 rounded-full inline-block">
+                        <Sparkles className="h-3 w-3 inline mr-1" /> Click to flip
+                      </p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="flex justify-center gap-4">
-            <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0}>
+            <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0} className="rounded-full">
               <ChevronLeft className="h-4 w-4 mr-2" /> Previous
             </Button>
-            <Button onClick={handleNext} disabled={currentIndex === cards.length - 1}>
+            <Button onClick={handleNext} disabled={currentIndex === cards.length - 1} className="rounded-full">
               Next <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           </div>
         </>
       ) : (
-        <div className="text-center py-12 border rounded-lg">
+        <div className="text-center py-12 border border-primary/20 rounded-lg bg-secondary/50">
           {!selectedSetId ? (
-            <p className="text-gray-500">Please select a vocabulary set to start practicing</p>
+            <p className="text-muted-foreground">Please select a vocabulary set to start practicing</p>
           ) : (
-            <p className="text-gray-500">No words found in this vocabulary set. Add some words first.</p>
+            <p className="text-muted-foreground">No words found in this vocabulary set. Add some words first.</p>
           )}
         </div>
       )}

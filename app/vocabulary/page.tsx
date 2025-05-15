@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, X, Languages } from "lucide-react"
+import { Plus, Trash2, X, Languages, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -262,57 +262,78 @@ export default function VocabularyPage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
-      <h1 className="text-3xl font-bold mb-6">Vocabulary Manager</h1>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Vocabulary Manager</h1>
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6 flex-wrap">
         <Link href="/">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-pink" size="sm" className="rounded-full">
             Home
           </Button>
         </Link>
         <Link href="/flashcards">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-blue" size="sm" className="rounded-full">
             Flashcards
           </Button>
         </Link>
         <Link href="/quiz">
-          <Button variant="outline" size="sm">
+          <Button variant="nav-purple" size="sm" className="rounded-full">
             Quiz
+          </Button>
+        </Link>
+        <Link href="/matching">
+          <Button variant="nav-yellow" size="sm" className="rounded-full">
+            Matching
+          </Button>
+        </Link>
+        <Link href="/puzzle">
+          <Button variant="nav-green" size="sm" className="rounded-full">
+            Puzzle
           </Button>
         </Link>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="sets">My Sets</TabsTrigger>
-          <TabsTrigger value="create">Create New Set</TabsTrigger>
+        <TabsList className="mb-4 rounded-full p-1 bg-secondary">
+          <TabsTrigger value="sets" className="rounded-full">
+            My Sets
+          </TabsTrigger>
+          <TabsTrigger value="create" className="rounded-full">
+            Create New Set
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="sets">
           {vocabSets.length === 0 ? (
-            <div className="text-center py-12">
-              <Languages className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <div className="text-center py-12 bg-secondary/50 rounded-lg border border-primary/20">
+              <Languages className="mx-auto h-12 w-12 text-primary/60 mb-4" />
               <h3 className="text-lg font-medium">No vocabulary sets yet</h3>
-              <p className="text-gray-500 mt-2 mb-4">Create your first vocabulary set to get started</p>
-              <Button onClick={() => setActiveTab("create")}>Create New Set</Button>
+              <p className="text-muted-foreground mt-2 mb-4">Create your first vocabulary set to get started</p>
+              <Button onClick={() => setActiveTab("create")} className="rounded-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Create New Set
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {vocabSets.map((set) => (
                 <Card key={set.id} className={activeSet?.id === set.id ? "border-primary" : ""}>
-                  <CardHeader>
-                    <CardTitle>{set.name}</CardTitle>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-primary">{set.name}</CardTitle>
                     <CardDescription>
                       {set.languages?.map((lang) => getLanguageLabel(lang)).join(", ") || "Multiple languages"}
                       {" • "}
                       {set.words.length} words
                     </CardDescription>
                   </CardHeader>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={() => setActiveSet(set)}>
+                  <CardFooter className="flex justify-between pt-4">
+                    <Button variant="outline" onClick={() => setActiveSet(set)} className="rounded-full">
                       View Words
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={() => deleteSet(set.id)}>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => deleteSet(set.id)}
+                      className="rounded-full"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </CardFooter>
@@ -324,24 +345,34 @@ export default function VocabularyPage() {
           {activeSet && (
             <div className="mt-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold text-primary">
                   {activeSet.name}{" "}
-                  <span className="text-sm font-normal text-gray-500">
+                  <span className="text-sm font-normal text-muted-foreground">
                     ({activeSet.languages?.map((lang) => getLanguageLabel(lang)).join(", ") || "Multiple languages"})
                   </span>
                 </h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Link href="/quiz">
-                    <Button variant="outline" size="sm">
-                      Create Quiz
+                    <Button variant="outline" size="sm" className="rounded-full">
+                      Quiz
                     </Button>
                   </Link>
                   <Link href="/flashcards">
-                    <Button variant="outline" size="sm">
-                      Practice Flashcards
+                    <Button variant="outline" size="sm" className="rounded-full">
+                      Flashcards
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="icon" onClick={() => setActiveSet(null)}>
+                  <Link href="/matching">
+                    <Button variant="outline" size="sm" className="rounded-full">
+                      Matching
+                    </Button>
+                  </Link>
+                  <Link href="/puzzle">
+                    <Button variant="outline" size="sm" className="rounded-full">
+                      Puzzle
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="icon" onClick={() => setActiveSet(null)} className="rounded-full">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -349,52 +380,56 @@ export default function VocabularyPage() {
 
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle>Add New Word</CardTitle>
+                  <CardTitle className="text-primary">Add New Word</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {activeSet.languages?.map((language) => (
                       <div key={language} className="space-y-2">
-                        <Label htmlFor={`translation-${language}`}>{getLanguageLabel(language)}</Label>
+                        <Label htmlFor={`translation-${language}`} className="text-primary/80">
+                          {getLanguageLabel(language)}
+                        </Label>
                         <Textarea
                           id={`translation-${language}`}
                           value={newTranslations[language] || ""}
                           onChange={(e) => handleTranslationChange(language, e.target.value)}
                           placeholder={`Enter ${getLanguageLabel(language)} translation`}
-                          className="min-h-[80px]"
+                          className="min-h-[80px] border-primary/20 focus:border-primary"
                         />
                       </div>
                     ))}
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={addWord} className="w-full">
+                  <Button onClick={addWord} className="w-full rounded-full">
                     <Plus className="mr-2 h-4 w-4" /> Add Word
                   </Button>
                 </CardFooter>
               </Card>
 
               {activeSet.words.length === 0 ? (
-                <div className="text-center py-8 border rounded-lg">
-                  <p className="text-gray-500">No words in this set yet. Add your first word above.</p>
+                <div className="text-center py-8 border border-primary/20 rounded-lg bg-secondary/50">
+                  <p className="text-muted-foreground">No words in this set yet. Add your first word above.</p>
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-hidden overflow-x-auto">
+                <div className="border border-primary/20 rounded-lg overflow-hidden overflow-x-auto">
                   <div
-                    className="grid font-medium bg-muted p-3"
+                    className="grid font-medium bg-secondary p-3"
                     style={{
                       gridTemplateColumns: `repeat(${activeSet.languages?.length || 1}, 1fr) auto`,
                     }}
                   >
                     {activeSet.languages?.map((language) => (
-                      <div key={language}>{getLanguageLabel(language)}</div>
+                      <div key={language} className="text-primary/80">
+                        {getLanguageLabel(language)}
+                      </div>
                     ))}
                     <div className="w-10"></div>
                   </div>
                   {activeSet.words.map((word) => (
                     <div
                       key={word.id}
-                      className="grid p-3 border-t"
+                      className="grid p-3 border-t border-primary/10"
                       style={{
                         gridTemplateColumns: `repeat(${activeSet.languages?.length || 1}, 1fr) auto`,
                       }}
@@ -405,8 +440,13 @@ export default function VocabularyPage() {
                         </div>
                       ))}
                       <div>
-                        <Button variant="ghost" size="icon" onClick={() => deleteWord(word.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteWord(word.id)}
+                          className="rounded-full"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive/70" />
                         </Button>
                       </div>
                     </div>
@@ -418,31 +458,35 @@ export default function VocabularyPage() {
         </TabsContent>
 
         <TabsContent value="create">
-          <Card>
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle>Create New Vocabulary Set</CardTitle>
+              <CardTitle className="text-primary">Create New Vocabulary Set</CardTitle>
               <CardDescription>Create a new set to organize your vocabulary words</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="set-name">Set Name</Label>
+                <Label htmlFor="set-name" className="text-primary/80">
+                  Set Name
+                </Label>
                 <Input
                   id="set-name"
                   value={newSetName}
                   onChange={(e) => setNewSetName(e.target.value)}
                   placeholder="e.g., Basic Phrases, Travel Vocabulary"
+                  className="border-primary/20 focus:border-primary"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Languages (select at least two)</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+                <Label className="text-primary/80">Languages (select at least two)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border border-primary/20 rounded-md p-3 bg-secondary/30">
                   {languages.map((language) => (
                     <div key={language.value} className="flex items-center space-x-2">
                       <Checkbox
                         id={`lang-${language.value}`}
                         checked={selectedLanguages.includes(language.value)}
                         onCheckedChange={(checked) => handleLanguageCheckboxChange(language.value, checked as boolean)}
+                        className="border-primary/40 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                       />
                       <Label htmlFor={`lang-${language.value}`} className="cursor-pointer">
                         {language.label}
@@ -453,8 +497,8 @@ export default function VocabularyPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={createNewSet} className="w-full">
-                <Plus className="mr-2 h-4 w-4" /> Create Vocabulary Set
+              <Button onClick={createNewSet} className="w-full rounded-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Create Vocabulary Set
               </Button>
             </CardFooter>
           </Card>
